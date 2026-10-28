@@ -488,11 +488,32 @@ function buildStudents(rows) {
   if (clashCount) issues.push(`${clashCount} student(s) have two papers at the same date and time (highlighted in the list).`);
   return { list, issues };
 }
+// A CSV saved from a formatted Excel sheet can carry a million lines of empty commas after the
+// real rows, making it hundreds of MB. Stream it in pieces and keep only lines with values, so
+// the browser never has to hold the whole file as one string.
+async function readCsvCompact(file) {
+  const bom = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  const encoding = bom[0] === 0xff && bom[1] === 0xfe ? "utf-16le" : bom[0] === 0xfe && bom[1] === 0xff ? "utf-16be" : "utf-8";
+  const reader = file.stream().pipeThrough(new TextDecoderStream(encoding)).getReader();
+  const lines = [];
+  const keep = (line) => { const t = line.replace(/[,;\t\s]+$/, ""); if (t) lines.push(t); };
+  let tail = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const parts = (tail + value).split(/\r\n|\n|\r/);
+    tail = parts.pop();
+    parts.forEach(keep);
+  }
+  keep(tail);
+  return lines.join("\n");
+}
 async function handleFile(file) {
   try {
-    const buf = await file.arrayBuffer();
     const isText = /\.(csv|txt)$/i.test(file.name);
-    const wb = XLSX.read(new Uint8Array(buf), { type: "array", raw: isText, cellStyles: false, cellHTML: false, cellText: false });
+    const wb = isText
+      ? XLSX.read(await readCsvCompact(file), { type: "string", raw: true })
+      : XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellStyles: false, cellHTML: false, cellText: false });
     const settingsName = wb.SheetNames.find((n) => norm(n) === "settings");
     if (settingsName) { readSettingsSheet(wb.Sheets[settingsName]); fillSettingsForm(); saveSettings(); }
     const dataName = wb.SheetNames.find((n) => n !== settingsName) || wb.SheetNames[0];
@@ -503,7 +524,7 @@ async function handleFile(file) {
   } catch (err) {
     const tooBig = err instanceof RangeError;
     showStatus(`Could not read ${file.name}.`, [tooBig
-      ? "The file is too large for the browser to read. Copy only the schedule columns and rows into a new sheet, save it as .csv, and load that."
+      ? `The file is too large for the browser to read (${(file.size / 1048576).toFixed(0)} MB). In Excel, copy only the schedule rows and columns into a new workbook, save that as .csv, and load it.`
       : "Save it as .xlsx or .csv and try again. (" + String(err.message || err) + ")"], true);
   }
 }
