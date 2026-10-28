@@ -13,7 +13,6 @@ const CARD_CSS = `/*@@CARD_CSS@@*/`;
 const MARKUP = `
 <div class="portal">
   <header class="p-head">
-    <div class="p-logo" id="pLogo" aria-hidden="true"></div>
     <div class="p-titles">
       <div class="p-inst" id="pInst"></div>
       <h1 id="pExam">Admit cards</h1>
@@ -42,15 +41,12 @@ const MARKUP = `
         <div class="field"><label for="sCampus">Campus</label><input type="text" id="sCampus"></div>
         <div class="field"><label for="sExamTitle">Exam title</label><input type="text" id="sExamTitle"></div>
         <details class="more">
-          <summary>Logo and card wording</summary>
+          <summary>Card wording</summary>
           <div>
-            <div class="field"><label for="logoInput">Logo</label><input type="file" id="logoInput" accept="image/*"></div>
-            <p class="hint"><button class="btn small" id="btnClearLogo" type="button">Remove logo</button></p>
             <div class="field"><label for="sSubtitle">Subtitle</label><input type="text" id="sSubtitle"></div>
             <div class="field"><label for="sNotice">Verification notice</label><input type="text" id="sNotice"></div>
             <div class="field"><label for="sSeating">Seating note</label><input type="text" id="sSeating"></div>
             <div class="field"><label for="sInstructions">Instructions (one per line)</label><textarea id="sInstructions"></textarea></div>
-            <div class="field"><label for="sSignatory">Signature line</label><input type="text" id="sSignatory"></div>
           </div>
         </details>
       </div>
@@ -97,7 +93,6 @@ const MARKUP = `
 // ---------- Shared with the Admit Card Builder ----------
 /*@@SHARED@@*/
 
-const imageUrl = (src) => src;
 const $ = (id) => document.getElementById(id);
 const use = (name) => (window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null));
 
@@ -149,7 +144,6 @@ function buildPage(data) {
 function renderChrome() {
   $("pInst").textContent = [settings.institution, settings.campus].filter(Boolean).join(" · ");
   $("pExam").textContent = settings.examTitle || "Admit cards";
-  $("pLogo").innerHTML = logoHTML();
   const n = published.count || 0;
   const when = published.publishedAt ? new Date(published.publishedAt) : null;
   const whenText = when ? `${pad(when.getDate())} ${MONTHS[when.getMonth()]} ${when.getFullYear()}` : "";
@@ -223,7 +217,7 @@ async function downloadCard() {
 }
 
 // ---------- Exam office ----------
-const FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions", signatory: "sSignatory" };
+const FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions" };
 function fillForm() { for (const [k, id] of Object.entries(FIELDS)) $(id).value = settings[k] || ""; }
 function showStatus(text, issues, warn) {
   const el = $("status");
@@ -253,18 +247,6 @@ async function handleFile(file) {
   const { list, issues } = buildStudents(sheetRows(wb.Sheets[dataName]));
   showStatus(list.length ? `Loaded ${list.length} student(s) from ${file.name}. Check a few cards below, then publish.` : `Nothing loaded from ${file.name}.`, issues, !list.length || issues.length > 0);
   if (list.length) stage(list, file.name);
-}
-async function shrinkLogo(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
-    const k = Math.min(1, 240 / Math.max(img.naturalWidth || 240, img.naturalHeight || 240));
-    const c = document.createElement("canvas");
-    c.width = Math.max(1, Math.round((img.naturalWidth || 240) * k)); c.height = Math.max(1, Math.round((img.naturalHeight || 240) * k));
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL("image/png");
-  } finally { URL.revokeObjectURL(url); }
 }
 let pendingAction = null;
 function askConfirm(text, label, action) {
@@ -334,11 +316,6 @@ use("user").then(async (user) => {
   fillForm();
   renderChrome();
   for (const [k, id] of Object.entries(FIELDS)) $(id).addEventListener("input", (e) => { settings[k] = e.target.value; afterSettingsChange(); });
-  $("logoInput").addEventListener("change", async (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    try { settings.logo = await shrinkLogo(f); afterSettingsChange(); } catch (err) { showStatus("That logo image could not be opened. Use a PNG, JPG or SVG file.", [], true); }
-  });
-  $("btnClearLogo").addEventListener("click", () => { settings.logo = ""; $("logoInput").value = ""; afterSettingsChange(); });
   $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ""; });
   const drop = $("drop");
   ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));

@@ -146,8 +146,7 @@ details.more > div { display: grid; gap: 10px; }
   box-shadow: 0 1px 3px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 16px;
 }
 .card * { color: var(--ink); }
-.c-head { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding-bottom: 14px; border-bottom: 3px double var(--rule); }
-.c-logo { width: 64px; height: 64px; object-fit: contain; }
+.c-head { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding-bottom: 14px; border-bottom: 3px double var(--rule); }
 .c-inst .n { font-weight: 700; font-size: 18px; line-height: 1.2; }
 .c-inst .c { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
 .c-exam { text-align: right; }
@@ -176,9 +175,8 @@ details.more > div { display: grid; gap: 10px; }
 .c-instr { display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 7px; margin: 0; padding: 0; list-style: none; }
 .c-instr li { display: grid; grid-template-columns: 20px 1fr; font-size: 11.5px; line-height: 1.4; }
 .c-instr b { font-variant-numeric: tabular-nums; }
-.c-foot { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-top: auto; padding-top: 28px; }
-.c-foot .stamp { font-size: 10.5px; color: var(--ink-soft); }
-.c-foot .ctrl { min-width: 210px; text-align: center; border-top: 1px solid var(--rule); padding-top: 5px; font-weight: 700; font-size: 12px; }
+.c-foot { display: flex; justify-content: center; margin-top: auto; padding-top: 28px; }
+.c-foot .stamp { font-size: 11px; font-weight: 700; }
 
 /* ---------- Print: only the cards, one per A4 page ---------- */
 @page { size: A4; margin: 8mm; }
@@ -246,15 +244,12 @@ details.more > div { display: grid; gap: 10px; }
         <div class="field"><label for="sCampus">Campus</label><input type="text" id="sCampus"></div>
         <div class="field"><label for="sExamTitle">Exam title</label><input type="text" id="sExamTitle"></div>
         <details class="more">
-          <summary>Logo and card wording</summary>
+          <summary>Card wording</summary>
           <div>
-            <div class="field"><label for="logoInput">Logo</label><input type="file" id="logoInput" accept="image/*"></div>
-            <p class="hint"><button class="btn small" id="btnClearLogo" type="button">Remove logo</button></p>
             <div class="field"><label for="sSubtitle">Subtitle</label><input type="text" id="sSubtitle"></div>
             <div class="field"><label for="sNotice">Verification notice</label><input type="text" id="sNotice"></div>
             <div class="field"><label for="sSeating">Seating note</label><input type="text" id="sSeating"></div>
             <div class="field"><label for="sInstructions">Instructions (one per line)</label><textarea id="sInstructions"></textarea></div>
-            <div class="field"><label for="sSignatory">Signature line</label><input type="text" id="sSignatory"></div>
             <button class="btn small" id="btnResetSettings" type="button">Restore default wording</button>
           </div>
         </details>
@@ -313,10 +308,8 @@ const DEFAULT_SETTINGS = {
   notice: "Important: Verify Name and Father Name with SSC record. The same particulars will be printed on the Degree and Transcript.",
   seating: "SEATING: Column A starts from the left when facing the board.",
   instructions: DEFAULT_INSTRUCTIONS.join("\n"),
-  signatory: "Controller of Examinations",
-  logo: "",
 };
-const SETTINGS_FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions", signatory: "sSignatory" };
+const SETTINGS_FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions" };
 
 // Header aliases, compared after lower-casing and stripping everything but letters/digits.
 const ALIASES = {
@@ -352,7 +345,7 @@ function loadSettings() {
   return { ...DEFAULT_SETTINGS };
 }
 function saveSettings() {
-  try { localStorage.setItem("admitCardSettings", JSON.stringify(settings)); } catch (e) { /* logo may exceed quota; ignore */ }
+  try { localStorage.setItem("admitCardSettings", JSON.stringify(settings)); } catch (e) { /* storage unavailable; settings last for this visit */ }
 }
 
 // ---------- Date & time parsing ----------
@@ -429,7 +422,7 @@ function sheetRows(ws) {
 }
 function readSettingsSheet(ws) {
   const rows = sheetRows(ws);
-  const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating", signatory: "signatory", signature: "signatory" };
+  const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating" };
   const instr = [];
   for (const [k, v] of rows) {
     const n = norm(k);
@@ -566,27 +559,6 @@ function loadSample() {
 }
 
 // ---------- Rendering ----------
-// Cards point at images through short blob: URLs. Repeating a multi-MB data: URL on thousands
-// of cards builds one string larger than the browser allows ("Invalid string length").
-const blobUrls = new Map();
-function imageUrl(src) {
-  if (!src || !src.startsWith("data:")) return src;
-  let url = blobUrls.get(src);
-  if (!url) {
-    const comma = src.indexOf(","), meta = src.slice(5, comma);
-    if (!meta.includes(";base64")) return src;
-    const bin = atob(src.slice(comma + 1)), bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    url = URL.createObjectURL(new Blob([bytes], { type: meta.split(";")[0] }));
-    blobUrls.set(src, url);
-  }
-  return url;
-}
-function logoHTML() {
-  if (settings.logo) return `<img class="c-logo" src="${esc(imageUrl(settings.logo))}" alt="">`;
-  const initials = settings.institution.split(/\s+/).filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).join("").slice(0, 3) || "U";
-  return `<svg class="c-logo" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="28" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="30" cy="30" r="22" fill="none" stroke="#111" stroke-width="1"/><text x="30" y="35" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#111">${esc(initials)}</text></svg>`;
-}
 function cardHTML(s, stamp) {
   const instr = settings.instructions.split("\n").map((l) => l.trim()).filter(Boolean);
   const dated = s.courses.filter((c) => c.dateKey < 99999999);
@@ -595,7 +567,7 @@ function cardHTML(s, stamp) {
   const span = !dated.length ? "" : day(first) === day(last) ? day(first) : `${day(first)} to ${day(last)}`;
   const n = s.courses.length;
   return `<article class="card">
-    <div class="c-head">${logoHTML()}
+    <div class="c-head">
       <div class="c-inst"><div class="n">${esc(settings.institution)}</div><div class="c">${esc(settings.campus)}</div></div>
       <div class="c-exam"><div class="t">${esc(settings.examTitle)}</div><div class="s">${esc(settings.subtitle)}</div></div>
     </div>
@@ -615,7 +587,7 @@ function cardHTML(s, stamp) {
     </table>
     ${instr.length ? `<h3 class="c-h">Instructions For Students</h3>
     <ol class="c-instr" style="grid-template-rows:repeat(${Math.ceil(instr.length / 2)},auto)">${instr.map((t, i) => `<li><b>${i + 1}.</b><span>${esc(t)}</span></li>`).join("")}</ol>` : ""}
-    <div class="c-foot"><span class="stamp">System Generated And Printed On: ${esc(stamp)}</span>${settings.signatory ? `<span class="ctrl">${esc(settings.signatory)}</span>` : ""}</div>
+    <div class="c-foot"><span class="stamp">System Generated And Printed On: ${esc(stamp)}</span></div>
   </article>`;
 }
 const PREVIEW_LIMIT = 20;
@@ -674,14 +646,7 @@ function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(
 for (const [k, id] of Object.entries(SETTINGS_FIELDS)) {
   $(id).addEventListener("input", (e) => { settings[k] = e.target.value; saveSettings(); scheduleRender(); });
 }
-$("btnResetSettings").addEventListener("click", () => { settings = { ...DEFAULT_SETTINGS, logo: settings.logo }; saveSettings(); fillSettingsForm(); render(); });
-const readAsDataURL = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
-$("logoInput").addEventListener("change", async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  settings.logo = await readAsDataURL(f); saveSettings(); render();
-});
-$("btnClearLogo").addEventListener("click", () => { settings.logo = ""; $("logoInput").value = ""; saveSettings(); render(); });
-
+$("btnResetSettings").addEventListener("click", () => { settings = { ...DEFAULT_SETTINGS }; saveSettings(); fillSettingsForm(); render(); });
 // ---------- Data loading & list events ----------
 $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ""; });
 const drop = $("drop");

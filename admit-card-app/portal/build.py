@@ -14,7 +14,6 @@ portal_css = '''
 /* ---------- Portal ---------- */
 .portal { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
 .p-head { display: flex; align-items: center; gap: 14px; }
-.p-logo .c-logo { width: 52px; height: 52px; display: block; }
 .p-titles { min-width: 0; }
 .p-inst { color: var(--muted); font-size: 14px; }
 .p-head h1 { font-size: clamp(22px, 4vw, 30px); font-weight: 700; letter-spacing: -0.01em; }
@@ -52,7 +51,7 @@ shared = '\n'.join([
     between('const norm = ', 'function loadSettings()'),
     between('// ---------- Date & time parsing ----------', 'async function handleFile(file)'),
     between('const SAMPLE_CSV = `', 'function loadSample()'),
-    between('function logoHTML() {', 'const PREVIEW_LIMIT'),
+    between('function cardHTML(s, stamp) {', 'const PREVIEW_LIMIT'),
 ])
 for a, b in [] if not generic else [('institution: "COMSATS University Islamabad",', 'institution: "Your University Name",'),
              ('campus: "Wah Campus",', 'campus: "Main Campus",'),

@@ -9,9 +9,8 @@ browser: no server, no install, and the data never leaves the computer.
 1. Open `index.html` in Chrome, Edge or Firefox (internet needed once, to load the spreadsheet
    library).
 2. Drop your `.xlsx` or `.csv` file on **Exam data file**, or click **Load sample data** to try it.
-3. Fill in **Exam details**: institution, campus, exam title. Under *Logo and card wording*
-   you can upload a logo and edit the notice, seating note, instructions and the signature line
-   (default: Controller of Examinations).
+3. Fill in **Exam details**: institution, campus, exam title. Under *Card wording* you
+   can edit the notice, seating note and instructions.
    These settings are remembered in the browser.
 4. **Print all cards** (or pick one student and **Print selected card**). Choose *Save as PDF* in
    the print dialog to get a PDF.
@@ -41,8 +40,8 @@ work) and title rows above the header are skipped. Papers are sorted by date and
 papers at the same date and time are highlighted as a clash.
 
 An Excel workbook may include a sheet named **Settings** with `Key | Value` rows (`Institution`,
-`Campus`, `Exam Title`, `Subtitle`, `Notice`, `Seating Note`, `Signatory`, and one `Instruction`
-row per instruction) so the whole exam setup travels in one file.
+`Campus`, `Exam Title`, `Subtitle`, `Notice`, `Seating Note`, and one `Instruction` row per
+instruction) so the whole exam setup travels in one file.
 
 ## Admit Card Portal (published page for students)
 
