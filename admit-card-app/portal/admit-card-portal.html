@@ -11,6 +11,8 @@ function app() {
 const PAGE_TITLE = "Admit Card Portal";
 const FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">';
 const XLSX_SRC = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+const H2C_SRC = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+const JSPDF_SRC = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
 
 const CSS = `:root {
@@ -278,11 +280,13 @@ const MARKUP = `
     <div class="result-bar">
       <span id="resultLabel"></span>
       <div class="actions">
-        <button class="btn primary" id="btnDownload" type="button" hidden>Download card to print</button>
+        <button class="btn primary" id="btnPdf" type="button" hidden>Download PDF</button>
+        <button class="btn" id="btnPrint" type="button" hidden>Print admit card</button>
         <button class="btn" id="btnClear" type="button">Look up another number</button>
       </div>
     </div>
-    <p class="hint" id="printHint" hidden>Open the downloaded file in your browser and press <b>Print admit card</b>.</p>
+    <p class="hint" id="printHint" hidden><b>Download PDF</b> saves your card as a one-page A4 PDF. <b>Print admit card</b> saves a print-ready copy of the card; open it and your browser's print window appears.</p>
+    <p class="hint" id="noSaveHint" hidden>Saving and printing are not available in this view. Take a screenshot of your card, or show it on your phone.</p>
     <div class="scroller" id="cardBox"></div>
   </section>
 
@@ -546,6 +550,7 @@ let settings = { ...DEFAULT_SETTINGS, ...(published.settings || {}) };
 let staged = null;      // students loaded by the exam office, not yet published
 let stagedName = "";
 let downloads = null;
+let downloadsChecked = false;
 let isEditor = false;
 let shown = null;       // student whose card is on screen
 
@@ -610,8 +615,7 @@ function showCard(s, preview) {
   shown = s;
   $("cardBox").innerHTML = cardHTML(s, fmtStamp(new Date()));
   $("resultLabel").textContent = preview ? `Preview of ${s.reg} (not published)` : `Admit card for ${s.reg}`;
-  $("btnDownload").hidden = !downloads;
-  $("printHint").hidden = !downloads;
+  setSaveButtons();
   $("result").hidden = false;
   setMsg("lookupMsg", "");
   $("result").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -635,6 +639,12 @@ async function lookup() {
     setMsg("lookupMsg", "This admit card could not be opened. Contact the examination office.", "warn");
   } finally { $("btnFind").disabled = false; }
 }
+function setSaveButtons() {
+  const ok = !!downloads;
+  $("btnPdf").hidden = !ok; $("btnPrint").hidden = !ok; $("printHint").hidden = !ok;
+  $("noSaveHint").hidden = ok || !downloadsChecked;
+}
+const fileStem = (s) => "Admit Card " + s.reg.replace(/[^\w-]+/g, "-");
 function cardFile(s) {
   const css = ":root{--paper:#fff;--ink:#111;--ink-soft:#444;--rule:#222;--band:#ececec;--font-card:Arial,'Helvetica Neue',Helvetica,sans-serif}"
     + "body{margin:0;background:#e9ecef;font-family:Arial,sans-serif}.bar{display:flex;justify-content:center;padding:16px}"
@@ -645,17 +655,48 @@ function cardFile(s) {
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
     + "<title>Admit Card " + esc(s.reg) + "</title><style>" + css + "</style></head><body>"
     + "<div class=\"bar\"><button type=\"button\" onclick=\"window.print()\">Print admit card</button></div>"
-    + "<div class=\"wrap\">" + cardHTML(s, fmtStamp(new Date())) + "</div></body></html>";
+    + "<div class=\"wrap\">" + cardHTML(s, fmtStamp(new Date())) + "</div>"
+    + "<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},400)})<\/script></body></html>";
 }
-async function downloadCard() {
-  if (!shown || !downloads) return;
+const scriptLoads = {};
+function loadScript(src) {
+  return scriptLoads[src] || (scriptLoads[src] = new Promise((res, rej) => {
+    const el = document.createElement("script");
+    el.src = src; el.onload = res;
+    el.onerror = () => { delete scriptLoads[src]; el.remove(); rej(new Error("load failed")); };
+    document.head.appendChild(el);
+  }));
+}
+// Draw the card off-screen at its full A4 width, so the PDF looks the same on a phone as on a laptop.
+async function cardPdf(s) {
+  await Promise.all([loadScript(H2C_SRC), loadScript(JSPDF_SRC)]);
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;background:#fff";
+  holder.innerHTML = cardHTML(s, fmtStamp(new Date()));
+  document.body.appendChild(holder);
   try {
-    await downloads.save({ filename: `Admit Card ${shown.reg.replace(/[^\w-]+/g, "-")}.html`, data: cardFile(shown) });
+    const card = holder.firstElementChild;
+    card.style.boxShadow = "none";
+    const canvas = await html2canvas(card, { scale: 2, backgroundColor: "#ffffff", logging: false });
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const k = Math.min(200 / canvas.width, 287 / canvas.height); // A4 less 5 mm margins
+    const w = canvas.width * k, h = canvas.height * k;
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", (210 - w) / 2, 5, w, h);
+    return pdf.output("blob");
+  } finally { holder.remove(); }
+}
+async function saveFile(btn, busyText, make, filename) {
+  if (!shown || !downloads) return;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = busyText;
+  try {
+    await downloads.save({ filename, data: await make(shown) });
   } catch (err) {
-    if (err && err.code === "declined") return;
-    if (err && ["unavailable", "not_granted", "capability_disabled", "capability_removed"].includes(err.code)) { downloads = null; $("btnDownload").hidden = true; $("printHint").hidden = true; return; }
-    setMsg("lookupMsg", "The card could not be downloaded. Try again in a moment.", "warn");
-  }
+    const code = err && err.code;
+    if (code === "declined") return;
+    if (["unavailable", "not_granted", "capability_disabled", "capability_removed"].includes(code)) { downloads = null; setSaveButtons(); return; }
+    setMsg("lookupMsg", code ? "Your card could not be saved. Try again in a moment." : "Your card could not be prepared. Check your internet connection and try again.", "warn");
+  } finally { btn.disabled = false; btn.textContent = label; }
 }
 
 // ---------- Exam office ----------
@@ -744,13 +785,14 @@ document.body.appendChild(root);
 renderChrome();
 $("lookupForm").addEventListener("submit", (e) => { e.preventDefault(); lookup(); });
 $("btnClear").addEventListener("click", () => { $("result").hidden = true; shown = null; $("reg").value = ""; $("reg").focus(); });
-$("btnDownload").addEventListener("click", downloadCard);
+$("btnPdf").addEventListener("click", (e) => saveFile(e.currentTarget, "Preparing PDF...", cardPdf, fileStem(shown || { reg: "" }) + ".pdf"));
+$("btnPrint").addEventListener("click", (e) => saveFile(e.currentTarget, "Preparing...", cardFile, fileStem(shown || { reg: "" }) + " (print).html"));
 try {
   const notice = sessionStorage.getItem("portalNotice");
   if (notice) { sessionStorage.removeItem("portalNotice"); setMsg("pubMsg", notice, "ok"); }
 } catch (e) { /* storage unavailable */ }
 
-use("downloads").then((d) => { downloads = d; if (shown) { $("btnDownload").hidden = !d; $("printHint").hidden = !d; } });
+use("downloads").then((d) => { downloads = d; downloadsChecked = true; if (shown) setSaveButtons(); });
 use("user").then(async (user) => {
   isEditor = user ? await user.canEdit().catch(() => false) : false;
   if (!isEditor) return;
