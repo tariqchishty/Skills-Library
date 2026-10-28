@@ -410,8 +410,25 @@ function matchColumns(headerRow) {
   });
   return map;
 }
+// Excel often declares a sheet as A1:XFD1048576 when whole rows or columns are formatted.
+// Reading that range builds millions of empty cells and fails with "Invalid string length",
+// so shrink the range to the cells that actually hold values before reading.
+function sheetRows(ws) {
+  let maxR = -1, maxC = -1;
+  for (const addr in ws) {
+    if (addr[0] === "!") continue;
+    const cell = ws[addr];
+    if (!cell || cell.v === undefined || cell.v === null || cell.v === "") continue;
+    const { r, c } = XLSX.utils.decode_cell(addr);
+    if (r > maxR) maxR = r;
+    if (c > maxC) maxC = c;
+  }
+  if (maxR < 0) return [];
+  ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true, blankrows: false });
+}
 function readSettingsSheet(ws) {
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  const rows = sheetRows(ws);
   const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating" };
   const instr = [];
   for (const [k, v] of rows) {
@@ -475,16 +492,19 @@ async function handleFile(file) {
   try {
     const buf = await file.arrayBuffer();
     const isText = /\.(csv|txt)$/i.test(file.name);
-    const wb = XLSX.read(new Uint8Array(buf), { type: "array", raw: isText });
+    const wb = XLSX.read(new Uint8Array(buf), { type: "array", raw: isText, cellStyles: false, cellHTML: false, cellText: false });
     const settingsName = wb.SheetNames.find((n) => norm(n) === "settings");
     if (settingsName) { readSettingsSheet(wb.Sheets[settingsName]); fillSettingsForm(); saveSettings(); }
     const dataName = wb.SheetNames.find((n) => n !== settingsName) || wb.SheetNames[0];
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[dataName], { header: 1, defval: "", raw: true });
+    const rows = sheetRows(wb.Sheets[dataName]);
     const { list, issues } = buildStudents(rows);
     showStatus(list.length ? `Loaded ${list.length} student(s) from ${file.name}.` : `Nothing loaded from ${file.name}.`, issues, !list.length || issues.length > 0);
     if (list.length) { students = list; selected = null; query = ""; $("search").value = ""; $("sampleBanner").hidden = true; render(); }
   } catch (err) {
-    showStatus(`Could not read ${file.name}. Save it as .xlsx or .csv and try again.`, [String(err.message || err)], true);
+    const tooBig = err instanceof RangeError;
+    showStatus(`Could not read ${file.name}.`, [tooBig
+      ? "The file is too large for the browser to read. Copy only the schedule columns and rows into a new sheet, save it as .csv, and load that."
+      : "Save it as .xlsx or .csv and try again. (" + String(err.message || err) + ")"], true);
   }
 }
 function showStatus(msg, issues, warn) {
