@@ -65,3 +65,6 @@ Edit `portal/main.js`, then rebuild (it reuses the parsing and card code from `i
 ```bash
 python3 portal/build.py index.html portal/main.js portal/admit-card-portal.html
 ```
+
+The build takes its defaults (COMSATS University Islamabad, Wah Campus) from `index.html`; add
+`--generic` for neutral "Your University Name" defaults.

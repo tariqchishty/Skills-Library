@@ -1,5 +1,6 @@
 import sys, re
 src_path, main_path, out_path = sys.argv[1:4]
+generic = "--generic" in sys.argv[4:]  # neutral institution defaults instead of the app's own
 src = open(src_path).read()
 main = open(main_path).read()
 
@@ -53,8 +54,7 @@ shared = '\n'.join([
     between('const SAMPLE_CSV = `', 'function loadSample()'),
     between('function logoHTML() {', 'const PREVIEW_LIMIT'),
 ])
-# Published page uses neutral defaults; the exam office types the institution's details.
-for a, b in [('institution: "COMSATS University Islamabad",', 'institution: "Your University Name",'),
+for a, b in [] if not generic else [('institution: "COMSATS University Islamabad",', 'institution: "Your University Name",'),
              ('campus: "Wah Campus",', 'campus: "Main Campus",'),
              (' (https://cuiwah.edu.pk/downloads.aspx)', '')]:
     assert shared.count(a) == 1, a
