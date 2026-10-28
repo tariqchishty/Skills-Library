@@ -28,6 +28,7 @@
   --ink: #111111;
   --ink-soft: #444444;
   --rule: #222222;
+  --band: #ececec;
   --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Source Sans 3", "Segoe UI", Roboto, Arial, sans-serif;
   --font-data: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -141,38 +142,43 @@ details.more > div { display: grid; gap: 10px; }
 /* ---------- The admit card (paper) ---------- */
 .card {
   width: 794px; min-height: 1060px; margin: 0 auto; background: var(--paper); color: var(--ink);
-  font: 12.5px/1.35 var(--font-card); padding: 26px 30px 22px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 14px;
+  font: 12.5px/1.4 var(--font-card); padding: 30px 36px 26px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 16px;
 }
 .card * { color: var(--ink); }
-.c-head { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: start; }
-.c-logo { width: 60px; height: 60px; object-fit: contain; }
-.c-inst { font-weight: 700; font-size: 14.5px; line-height: 1.25; padding-top: 4px; }
-.c-exam { text-align: right; padding-top: 14px; }
-.c-exam .t { font-weight: 700; font-size: 15.5px; letter-spacing: 0.02em; }
-.c-exam .s { font-weight: 700; font-size: 13px; }
-.c-id { display: grid; grid-template-columns: 96px 104px 1fr; gap: 14px; align-items: start; }
-.c-qr { width: 92px; height: 92px; }
-.c-qr img, .c-qr canvas { width: 92px !important; height: 92px !important; }
-.c-photo { width: 100px; height: 118px; border: 1px solid var(--rule); display: grid; place-items: center; overflow: hidden; font-size: 10px; color: var(--ink-soft); }
-.c-photo img { width: 100%; height: 100%; object-fit: cover; }
-.c-fields { display: grid; gap: 8px; min-width: 0; }
-.c-fields dl { display: grid; grid-template-columns: 112px 1fr; gap: 5px 8px; margin: 0; }
-.c-fields dt { color: var(--ink-soft); }
-.c-fields dd { margin: 0; font-weight: 700; }
-.c-notice { border: 1px solid var(--rule); padding: 5px 8px; font-size: 11.5px; font-weight: 700; }
-.c-h { font-weight: 700; font-size: 13.5px; margin: 4px 0 0; }
-.c-table { width: 100%; border-collapse: collapse; }
-.c-table th, .c-table td { border: 1px solid var(--rule); padding: 6px 7px; text-align: center; vertical-align: middle; }
-.c-table th { font-weight: 700; font-size: 12.5px; }
+.c-head { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding-bottom: 14px; border-bottom: 3px double var(--rule); }
+.c-logo { width: 64px; height: 64px; object-fit: contain; }
+.c-inst .n { font-weight: 700; font-size: 18px; line-height: 1.2; }
+.c-inst .c { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.c-exam { text-align: right; }
+.c-exam .t { font-weight: 700; font-size: 14px; letter-spacing: 0.04em; }
+.c-exam .s { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.c-band { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; background: var(--band); border: 1px solid var(--rule); padding: 7px 14px; }
+.c-band .k { font-weight: 700; font-size: 16px; letter-spacing: 0.22em; }
+.c-band .v { font-size: 12px; }
+.c-who { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); }
+.c-who > div { display: grid; gap: 2px; padding: 8px 14px; border-bottom: 1px solid var(--rule); }
+.c-who > div:nth-child(odd) { border-right: 1px solid var(--rule); }
+.c-who > div:nth-last-child(-n+2) { border-bottom: 0; }
+.c-who span { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+.c-who b { font-size: 14.5px; }
+.c-who .reg b { font-size: 17px; letter-spacing: 0.05em; }
+.c-notice { border-left: 4px solid var(--rule); background: var(--band); padding: 6px 12px; font-size: 11.5px; }
+.c-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 2px 0 -6px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.c-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.c-table th, .c-table td { border: 1px solid var(--rule); padding: 7px 7px; text-align: center; vertical-align: middle; }
+.c-table th { background: var(--band); font-weight: 700; font-size: 11.5px; }
 .c-table td.l { text-align: left; }
+.c-table td.seat { font-weight: 700; font-size: 13.5px; }
 .c-table td.sign { width: 92px; }
-.c-table td.note { text-align: left; font-weight: 700; font-size: 12px; }
+.c-table td.note { text-align: left; font-size: 11.5px; font-style: italic; }
 .c-table tr.clash td { background: #fde9df; }
-.c-instr { display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); border-bottom: 0; border-right: 0; }
-.c-instr div { display: grid; grid-template-columns: 26px 1fr; gap: 4px; padding: 8px 8px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-size: 12px; align-items: center; }
-.c-instr b { font-size: 13px; }
-.c-foot { text-align: center; font-weight: 700; font-size: 12px; margin-top: auto; padding-top: 6px; }
+.c-instr { display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 7px; margin: 0; padding: 0; list-style: none; }
+.c-instr li { display: grid; grid-template-columns: 20px 1fr; font-size: 11.5px; line-height: 1.4; }
+.c-instr b { font-variant-numeric: tabular-nums; }
+.c-foot { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-top: auto; padding-top: 28px; }
+.c-foot .stamp { font-size: 10.5px; color: var(--ink-soft); }
+.c-foot .ctrl { min-width: 210px; text-align: center; border-top: 1px solid var(--rule); padding-top: 5px; font-weight: 700; font-size: 12px; }
 
 /* ---------- Print: only the cards, one per A4 page ---------- */
 @page { size: A4; margin: 8mm; }
@@ -230,7 +236,7 @@ details.more > div { display: grid; gap: 10px; }
           <button class="btn small" id="btnSample" type="button">Load sample data</button>
           <button class="btn small" id="btnTemplate" type="button">Download CSV template</button>
         </div>
-        <p class="hint">One row per student per paper. Columns: <code>Registration No, Name, Father Name, Program, Course Code, Course Title, Date, Time, Room, Seat No</code>, optional <code>Photo</code>.</p>
+        <p class="hint">One row per student per paper. Columns: <code>Registration No, Name, Father Name, Program, Course Code, Course Title, Date, Time, Room, Seat No</code>.</p>
         <div class="status" id="status" hidden></div>
       </section>
 
@@ -240,18 +246,15 @@ details.more > div { display: grid; gap: 10px; }
         <div class="field"><label for="sCampus">Campus</label><input type="text" id="sCampus"></div>
         <div class="field"><label for="sExamTitle">Exam title</label><input type="text" id="sExamTitle"></div>
         <details class="more">
-          <summary>Logo, photos and card wording</summary>
+          <summary>Logo and card wording</summary>
           <div>
-            <div class="row2">
-              <div class="field"><label for="logoInput">Logo</label><input type="file" id="logoInput" accept="image/*"></div>
-              <div class="field"><label for="photoInput">Student photos</label><input type="file" id="photoInput" accept="image/*" multiple></div>
-            </div>
-            <p class="hint">Name each photo after the registration number, e.g. <code>FA23-BCS-014.jpg</code>. <button class="btn small" id="btnClearLogo" type="button">Remove logo</button></p>
+            <div class="field"><label for="logoInput">Logo</label><input type="file" id="logoInput" accept="image/*"></div>
+            <p class="hint"><button class="btn small" id="btnClearLogo" type="button">Remove logo</button></p>
             <div class="field"><label for="sSubtitle">Subtitle</label><input type="text" id="sSubtitle"></div>
             <div class="field"><label for="sNotice">Verification notice</label><input type="text" id="sNotice"></div>
             <div class="field"><label for="sSeating">Seating note</label><input type="text" id="sSeating"></div>
             <div class="field"><label for="sInstructions">Instructions (one per line)</label><textarea id="sInstructions"></textarea></div>
-            <label class="check"><input type="checkbox" id="sQr"> Print QR code with registration number</label>
+            <div class="field"><label for="sSignatory">Signature line</label><input type="text" id="sSignatory"></div>
             <button class="btn small" id="btnResetSettings" type="button">Restore default wording</button>
           </div>
         </details>
@@ -282,7 +285,6 @@ details.more > div { display: grid; gap: 10px; }
 
 <script id="embedded-data" type="application/json">null</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 "use strict";
 // Snapshot of the untouched page, used to build the self-contained student copy.
@@ -311,10 +313,10 @@ const DEFAULT_SETTINGS = {
   notice: "Important: Verify Name and Father Name with SSC record. The same particulars will be printed on the Degree and Transcript.",
   seating: "SEATING: Column A starts from the left when facing the board.",
   instructions: DEFAULT_INSTRUCTIONS.join("\n"),
-  qr: true,
+  signatory: "Controller of Examinations",
   logo: "",
 };
-const SETTINGS_FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions" };
+const SETTINGS_FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions", signatory: "sSignatory" };
 
 // Header aliases, compared after lower-casing and stripping everything but letters/digits.
 const ALIASES = {
@@ -328,14 +330,12 @@ const ALIASES = {
   time: ["time", "examtime", "starttime", "papertime"],
   room: ["room", "roomno", "venue", "hall", "examhall"],
   seat: ["seatno", "seat", "seatnumber"],
-  photo: ["photo", "photourl", "picture", "image"],
 };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 let settings = loadSettings();
 let students = [];
-let photos = {};
 let selected = null;   // student key, or null for "all"
 let query = "";
 let embedded = null;
@@ -429,7 +429,7 @@ function sheetRows(ws) {
 }
 function readSettingsSheet(ws) {
   const rows = sheetRows(ws);
-  const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating" };
+  const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating", signatory: "signatory", signature: "signatory" };
   const instr = [];
   for (const [k, v] of rows) {
     const n = norm(k);
@@ -456,8 +456,8 @@ function buildStudents(rows) {
     if (!reg) { if (r.some((c) => String(c).trim())) skipped++; continue; }
     const key = norm(reg);
     let s = byKey.get(key);
-    if (!s) { s = { key, reg, name: "", father: "", program: "", photo: "", courses: [] }; byKey.set(key, s); }
-    for (const f of ["name", "father", "program", "photo"]) if (!s[f] && String(get(f)).trim()) s[f] = String(get(f)).trim();
+    if (!s) { s = { key, reg, name: "", father: "", program: "", courses: [] }; byKey.set(key, s); }
+    for (const f of ["name", "father", "program"]) if (!s[f] && String(get(f)).trim()) s[f] = String(get(f)).trim();
     const code = String(get("code")).trim(), title = String(get("title")).trim();
     if (!code && !title) continue;
     const rawDate = get("date"), rawTime = get("time");
@@ -588,41 +588,35 @@ function logoHTML() {
   return `<svg class="c-logo" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="28" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="30" cy="30" r="22" fill="none" stroke="#111" stroke-width="1"/><text x="30" y="35" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#111">${esc(initials)}</text></svg>`;
 }
 function cardHTML(s, stamp) {
-  const photo = imageUrl(photos[s.key] || s.photo);
   const instr = settings.instructions.split("\n").map((l) => l.trim()).filter(Boolean);
-  const rowsPerCol = Math.ceil(instr.length / 2);
+  const dated = s.courses.filter((c) => c.dateKey < 99999999);
+  const day = (c) => c.dateText.replace(/\s*\(\w+\)$/, "");
+  const first = dated[0], last = dated[dated.length - 1];
+  const span = !dated.length ? "" : day(first) === day(last) ? day(first) : `${day(first)} to ${day(last)}`;
+  const n = s.courses.length;
   return `<article class="card">
     <div class="c-head">${logoHTML()}
-      <div class="c-inst">${esc(settings.institution)}<br>${esc(settings.campus)}</div>
+      <div class="c-inst"><div class="n">${esc(settings.institution)}</div><div class="c">${esc(settings.campus)}</div></div>
       <div class="c-exam"><div class="t">${esc(settings.examTitle)}</div><div class="s">${esc(settings.subtitle)}</div></div>
     </div>
-    <div class="c-id">
-      <div class="c-qr" data-qr="${esc(settings.qr ? `${s.reg} | ${s.name} | ${settings.examTitle}` : "")}"></div>
-      <div class="c-photo">${photo ? `<img src="${esc(photo)}" alt="">` : "PHOTO"}</div>
-      <div class="c-fields">
-        <dl><dt>Name:</dt><dd>${esc(s.name)}</dd><dt>Father Name:</dt><dd>${esc(s.father)}</dd>
-        <dt>Registration No:</dt><dd>${esc(s.reg)}</dd><dt>Program:</dt><dd>${esc(s.program)}</dd></dl>
-        ${settings.notice ? `<div class="c-notice">${esc(settings.notice)}</div>` : ""}
-      </div>
+    <div class="c-band"><span class="k">ADMIT CARD</span><span class="v">${n} paper${n === 1 ? "" : "s"}${span ? " · " + esc(span) : ""}</span></div>
+    <div class="c-who">
+      <div><span>Name</span><b>${esc(s.name)}</b></div>
+      <div class="reg"><span>Registration No</span><b>${esc(s.reg)}</b></div>
+      <div><span>Father Name</span><b>${esc(s.father)}</b></div>
+      <div><span>Program</span><b>${esc(s.program)}</b></div>
     </div>
+    ${settings.notice ? `<div class="c-notice">${esc(settings.notice)}</div>` : ""}
     <h3 class="c-h">Exam Schedule And Seating Plan</h3>
     <table class="c-table">
       <thead><tr><th>S.#</th><th>Course Code</th><th>Course Title</th><th>Date</th><th>Time</th><th>Room</th><th>Seat No</th><th>Invigilator's Sign</th></tr></thead>
-      <tbody>${s.courses.map((c, i) => `<tr${c.clash ? ' class="clash"' : ""}><td>${i + 1}</td><td>${esc(c.code)}</td><td class="l">${esc(c.title)}</td><td>${esc(c.dateText)}</td><td>${esc(c.timeText)}</td><td>${esc(c.room)}</td><td><b>${esc(c.seat)}</b></td><td class="sign"></td></tr>`).join("")}
+      <tbody>${s.courses.map((c, i) => `<tr${c.clash ? ' class="clash"' : ""}><td>${i + 1}</td><td>${esc(c.code)}</td><td class="l">${esc(c.title)}</td><td>${esc(c.dateText)}</td><td>${esc(c.timeText)}</td><td>${esc(c.room)}</td><td class="seat">${esc(c.seat)}</td><td class="sign"></td></tr>`).join("")}
       ${settings.seating ? `<tr><td class="note" colspan="8">${esc(settings.seating)}</td></tr>` : ""}</tbody>
     </table>
     ${instr.length ? `<h3 class="c-h">Instructions For Students</h3>
-    <div class="c-instr" style="grid-template-rows:repeat(${rowsPerCol},auto)">${instr.map((t, i) => `<div><b>${i + 1}.</b><span>${esc(t)}</span></div>`).join("")}</div>` : ""}
-    <div class="c-foot">System Generated And Printed On: ${esc(stamp)}</div>
+    <ol class="c-instr" style="grid-template-rows:repeat(${Math.ceil(instr.length / 2)},auto)">${instr.map((t, i) => `<li><b>${i + 1}.</b><span>${esc(t)}</span></li>`).join("")}</ol>` : ""}
+    <div class="c-foot"><span class="stamp">System Generated And Printed On: ${esc(stamp)}</span>${settings.signatory ? `<span class="ctrl">${esc(settings.signatory)}</span>` : ""}</div>
   </article>`;
-}
-function drawQRs(root) {
-  if (typeof QRCode === "undefined") return;
-  root.querySelectorAll("[data-qr]").forEach((el) => {
-    const text = el.getAttribute("data-qr");
-    if (!text) return;
-    new QRCode(el, { text, width: 184, height: 184, correctLevel: QRCode.CorrectLevel.M });
-  });
 }
 const PREVIEW_LIMIT = 20;
 let previewLimit = PREVIEW_LIMIT;
@@ -638,19 +632,17 @@ function renderCards(list, limit = list.length) {
   const rest = list.length - limit;
   box.innerHTML = list.slice(0, limit).map((s) => `<div class="scroller">${cardHTML(s, stamp)}</div>`).join("")
     + (rest > 0 ? `<div class="empty">Showing ${limit} of ${list.length} cards. Print all cards prints every one.<br><br><button class="btn small" id="btnMore" type="button">Show ${Math.min(PREVIEW_LIMIT, rest)} more</button></div>` : "");
-  drawQRs(box);
 }
 async function printAll() {
   selected = null; previewLimit = PREVIEW_LIMIT; render();
   const list = filtered();
   if (!list.length) return;
-  const job = ++printJob, box = $("cards"), stamp = fmtStamp(new Date()), BATCH = 50;
+  const job = ++printJob, box = $("cards"), stamp = fmtStamp(new Date()), BATCH = 100;
   box.innerHTML = "";
   for (let i = 0; i < list.length; i += BATCH) {
     if (job !== printJob) return; // another render replaced the cards
     const wrap = document.createElement("div");
     wrap.innerHTML = list.slice(i, i + BATCH).map((s) => `<div class="scroller">${cardHTML(s, stamp)}</div>`).join("");
-    drawQRs(wrap);
     box.append(...wrap.childNodes);
     $("stageCount").textContent = `Preparing cards for printing: ${Math.min(i + BATCH, list.length)} of ${list.length}`;
     await new Promise((r) => setTimeout(r));
@@ -676,14 +668,12 @@ function render() {
 // ---------- Settings form ----------
 function fillSettingsForm() {
   for (const [k, id] of Object.entries(SETTINGS_FIELDS)) $(id).value = settings[k];
-  $("sQr").checked = !!settings.qr;
 }
 let renderTimer;
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(render, 200); }
 for (const [k, id] of Object.entries(SETTINGS_FIELDS)) {
   $(id).addEventListener("input", (e) => { settings[k] = e.target.value; saveSettings(); scheduleRender(); });
 }
-$("sQr").addEventListener("change", (e) => { settings.qr = e.target.checked; saveSettings(); render(); });
 $("btnResetSettings").addEventListener("click", () => { settings = { ...DEFAULT_SETTINGS, logo: settings.logo }; saveSettings(); fillSettingsForm(); render(); });
 const readAsDataURL = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 $("logoInput").addEventListener("change", async (e) => {
@@ -691,16 +681,6 @@ $("logoInput").addEventListener("change", async (e) => {
   settings.logo = await readAsDataURL(f); saveSettings(); render();
 });
 $("btnClearLogo").addEventListener("click", () => { settings.logo = ""; $("logoInput").value = ""; saveSettings(); render(); });
-$("photoInput").addEventListener("change", async (e) => {
-  let matched = 0;
-  for (const f of e.target.files) {
-    const key = norm(f.name.replace(/\.[^.]+$/, ""));
-    photos[key] = await readAsDataURL(f);
-    if (students.some((s) => s.key === key)) matched++;
-  }
-  showStatus(`${matched} of ${e.target.files.length} photo(s) matched a registration number.`, [], matched < e.target.files.length);
-  render();
-});
 
 // ---------- Data loading & list events ----------
 $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ""; });
@@ -735,7 +715,7 @@ $("btnPrintAll").addEventListener("click", printAll);
 $("btnStudentCopy").addEventListener("click", () => {
   if (!students.length) { showStatus("Load student data first.", [], true); return; }
   const data = { settings, generatedAt: new Date().toISOString(),
-    students: students.map((s) => ({ ...s, photo: photos[s.key] || s.photo })) };
+    students };
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
   const html = PRISTINE.replace(EMBED_MARKER, () => '<script id="embedded-data" type="application/json">' + json + "<\/script>");
   const slug = settings.examTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "exams";
