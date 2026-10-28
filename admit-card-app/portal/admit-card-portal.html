@@ -1,0 +1,819 @@
+<title>Admit Card Portal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script id="records" type="application/json">null</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+function app() {
+"use strict";
+// Admit Card Portal. Everything the page needs lives in this function, so the exam office can
+// republish the page from its own source with new records (see buildPage).
+const PAGE_TITLE = "Admit Card Portal";
+const FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">';
+const XLSX_SRC = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
+
+const CSS = `:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --sunken: #f6f8fa;
+  --fg: #16202b;
+  --muted: #5a6876;
+  --line: #d3dae2;
+  --accent: #1d5ba6;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3edf8;
+  --warn: #a8461b;
+  --warn-soft: #fbeee6;
+  --ok: #26734d;
+  /* The admit card is paper in both themes */
+  --paper: #ffffff;
+  --ink: #111111;
+  --ink-soft: #444444;
+  --rule: #222222;
+  --band: #ececec;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-card: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141a; --surface: #172029; --sunken: #121a21; --fg: #e4eaf0; --muted: #94a2b0;
+    --line: #2a3643; --accent: #7fb0ee; --accent-ink: #0b1622; --accent-soft: #1b2c40;
+    --warn: #f0a07a; --warn-soft: #3a2218; --ok: #79c99f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141a; --surface: #172029; --sunken: #121a21; --fg: #e4eaf0; --muted: #94a2b0;
+  --line: #2a3643; --accent: #7fb0ee; --accent-ink: #0b1622; --accent-soft: #1b2c40;
+  --warn: #f0a07a; --warn-soft: #3a2218; --ok: #79c99f; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+[hidden] { display: none !important; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 1320px; margin: 0 auto; display: grid; gap: 20px; }
+.topbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.topbar h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.topbar p { margin: 2px 0 0; color: var(--muted); max-width: 62ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 14px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+
+.layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.rail { display: grid; gap: 14px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel h2 { font-size: 15px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }
+.panel h2 .step { font-family: var(--font-data); font-size: 12px; color: var(--accent); }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.hint code, .mono { font-family: var(--font-data); font-size: 12px; }
+
+.drop {
+  border: 1.5px dashed var(--line); border-radius: 6px; padding: 18px 12px; text-align: center;
+  background: var(--sunken); cursor: pointer; display: grid; gap: 4px;
+}
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop strong { font-family: var(--font-display); font-weight: 600; }
+
+.status { font-size: 13px; border-radius: 6px; padding: 8px 10px; background: var(--sunken); border: 1px solid var(--line); }
+.status.ok { border-color: var(--ok); }
+.status.warn { border-color: var(--warn); background: var(--warn-soft); }
+.status ul { margin: 4px 0 0; padding-left: 18px; }
+
+.field { display: grid; gap: 4px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.field input[type=text], .field input[type=search], .field textarea {
+  width: 100%; border: 1px solid var(--line); background: var(--sunken); border-radius: 5px; padding: 7px 9px;
+}
+.field textarea { min-height: 120px; resize: vertical; font-size: 13px; line-height: 1.4; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+details.more summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--accent); }
+details.more[open] summary { margin-bottom: 10px; }
+details.more > div { display: grid; gap: 10px; }
+
+.list { display: grid; gap: 4px; max-height: 360px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.list button {
+  width: 100%; text-align: left; border: 1px solid transparent; background: none; border-radius: 5px;
+  padding: 6px 8px; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px;
+}
+.list button:hover { background: var(--sunken); }
+.list button[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.list .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .rg { font-family: var(--font-data); font-size: 12px; color: var(--muted); }
+.list .ct { font-size: 12px; color: var(--muted); grid-row: 1; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; }
+.chip { font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 7px; grid-column: 2; justify-self: end; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+
+.stage { min-width: 0; display: grid; gap: 12px; }
+.stage-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.stage-bar .count { color: var(--muted); font-size: 14px; }
+.banner { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; font-size: 14px; }
+.frame-note { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
+.cards { display: grid; gap: 24px; }
+.scroller { overflow-x: auto; padding-bottom: 4px; }
+.empty { text-align: center; padding: 48px 16px; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; }
+
+
+/* ---------- Portal ---------- */
+.portal { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
+.p-head { display: flex; align-items: center; gap: 14px; }
+.p-logo .c-logo { width: 52px; height: 52px; display: block; }
+.p-titles { min-width: 0; }
+.p-inst { color: var(--muted); font-size: 14px; }
+.p-head h1 { font-size: clamp(22px, 4vw, 30px); font-weight: 700; letter-spacing: -0.01em; }
+.lookup h2, .admin h2 { font-size: 18px; font-weight: 600; }
+.lookup-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.lookup-row .grow { flex: 1 1 240px; min-width: 0; }
+.lookup-row input { font-family: var(--font-data); font-size: 16px; letter-spacing: 0.03em; padding: 10px 12px; }
+.lookup-row .btn { padding: 10px 18px; font-size: 15px; }
+.msg { margin: 0; font-size: 14px; }
+.msg:empty { display: none; }
+.msg.warn { color: var(--warn); }
+.msg.ok { color: var(--ok); }
+.admin { border-color: var(--accent); }
+.admin-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tag { font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 99px; padding: 2px 10px; }
+.admin-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 720px) { .admin-grid { grid-template-columns: minmax(0, 1fr); } }
+.admin-col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.publish-row { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.confirm { display: grid; gap: 8px; border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 10px 12px; }
+.confirm p { margin: 0; }
+.result { display: grid; gap: 10px; min-width: 0; }
+.result-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-weight: 600; }
+.result .hint { margin: 0; }
+.p-foot { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
+.p-foot:empty { display: none; }
+`;
+const CARD_CSS = `/* ---------- The admit card (paper) ---------- */
+.card {
+  width: 794px; min-height: 1060px; margin: 0 auto; background: var(--paper); color: var(--ink);
+  font: 12.5px/1.4 var(--font-card); padding: 30px 36px 26px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 16px;
+}
+.card * { color: var(--ink); }
+.c-head { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding-bottom: 14px; border-bottom: 3px double var(--rule); }
+.c-logo { width: 64px; height: 64px; object-fit: contain; }
+.c-inst .n { font-weight: 700; font-size: 18px; line-height: 1.2; }
+.c-inst .c { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.c-exam { text-align: right; }
+.c-exam .t { font-weight: 700; font-size: 14px; letter-spacing: 0.04em; }
+.c-exam .s { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.c-band { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; background: var(--band); border: 1px solid var(--rule); padding: 7px 14px; }
+.c-band .k { font-weight: 700; font-size: 16px; letter-spacing: 0.22em; }
+.c-band .v { font-size: 12px; }
+.c-who { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); }
+.c-who > div { display: grid; gap: 2px; padding: 8px 14px; border-bottom: 1px solid var(--rule); }
+.c-who > div:nth-child(odd) { border-right: 1px solid var(--rule); }
+.c-who > div:nth-last-child(-n+2) { border-bottom: 0; }
+.c-who span { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+.c-who b { font-size: 14.5px; }
+.c-who .reg b { font-size: 17px; letter-spacing: 0.05em; }
+.c-notice { border-left: 4px solid var(--rule); background: var(--band); padding: 6px 12px; font-size: 11.5px; }
+.c-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 2px 0 -6px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.c-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.c-table th, .c-table td { border: 1px solid var(--rule); padding: 7px 7px; text-align: center; vertical-align: middle; }
+.c-table th { background: var(--band); font-weight: 700; font-size: 11.5px; }
+.c-table td.l { text-align: left; }
+.c-table td.seat { font-weight: 700; font-size: 13.5px; }
+.c-table td.sign { width: 92px; }
+.c-table td.note { text-align: left; font-size: 11.5px; font-style: italic; }
+.c-table tr.clash td { background: #fde9df; }
+.c-instr { display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 7px; margin: 0; padding: 0; list-style: none; }
+.c-instr li { display: grid; grid-template-columns: 20px 1fr; font-size: 11.5px; line-height: 1.4; }
+.c-instr b { font-variant-numeric: tabular-nums; }
+.c-foot { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-top: auto; padding-top: 28px; }
+.c-foot .stamp { font-size: 10.5px; color: var(--ink-soft); }
+.c-foot .ctrl { min-width: 210px; text-align: center; border-top: 1px solid var(--rule); padding-top: 5px; font-weight: 700; font-size: 12px; }
+
+`;
+
+const MARKUP = `
+<div class="portal">
+  <header class="p-head">
+    <div class="p-logo" id="pLogo" aria-hidden="true"></div>
+    <div class="p-titles">
+      <div class="p-inst" id="pInst"></div>
+      <h1 id="pExam">Admit cards</h1>
+    </div>
+  </header>
+
+  <section class="panel admin" id="admin" hidden>
+    <div class="admin-head">
+      <h2>Exam office</h2>
+      <span class="tag">Only editors of this page see this panel</span>
+    </div>
+    <p class="hint" id="pubState"></p>
+    <div class="admin-grid">
+      <div class="admin-col">
+        <label class="drop" id="drop" for="fileInput">
+          <strong>Drop the exam schedule (.csv or .xlsx)</strong>
+          <span class="hint">or click to choose a file</span>
+        </label>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.ods" hidden>
+        <div class="actions"><button class="btn small" id="btnSample" type="button">Try with sample students</button></div>
+        <p class="hint">One row per student per paper: <code>Registration No, Name, Father Name, Program, Course Code, Course Title, Date, Time, Room, Seat No</code>.</p>
+        <div class="status" id="status" hidden></div>
+      </div>
+      <div class="admin-col">
+        <div class="field"><label for="sInstitution">Institution</label><input type="text" id="sInstitution"></div>
+        <div class="field"><label for="sCampus">Campus</label><input type="text" id="sCampus"></div>
+        <div class="field"><label for="sExamTitle">Exam title</label><input type="text" id="sExamTitle"></div>
+        <details class="more">
+          <summary>Logo and card wording</summary>
+          <div>
+            <div class="field"><label for="logoInput">Logo</label><input type="file" id="logoInput" accept="image/*"></div>
+            <p class="hint"><button class="btn small" id="btnClearLogo" type="button">Remove logo</button></p>
+            <div class="field"><label for="sSubtitle">Subtitle</label><input type="text" id="sSubtitle"></div>
+            <div class="field"><label for="sNotice">Verification notice</label><input type="text" id="sNotice"></div>
+            <div class="field"><label for="sSeating">Seating note</label><input type="text" id="sSeating"></div>
+            <div class="field"><label for="sInstructions">Instructions (one per line)</label><textarea id="sInstructions"></textarea></div>
+            <div class="field"><label for="sSignatory">Signature line</label><input type="text" id="sSignatory"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div class="publish-row">
+      <button class="btn primary" id="btnPublish" type="button">Save exam details</button>
+      <button class="btn" id="btnUnpublish" type="button" hidden>Remove published cards</button>
+    </div>
+    <div class="confirm" id="confirm" hidden>
+      <p id="confirmText"></p>
+      <div class="actions">
+        <button class="btn primary" id="btnConfirm" type="button">Publish</button>
+        <button class="btn" id="btnCancel" type="button">Cancel</button>
+      </div>
+    </div>
+    <p class="msg" id="pubMsg" role="status"></p>
+  </section>
+
+  <section class="panel lookup" id="lookupPanel">
+    <h2>Find your admit card</h2>
+    <p class="hint" id="lookupHint">Enter your registration number as it appears on your campus card.</p>
+    <form id="lookupForm" class="lookup-row" autocomplete="off">
+      <div class="field grow"><label for="reg">Registration number</label><input type="text" id="reg" placeholder="e.g. FA23-BCS-014" spellcheck="false"></div>
+      <button class="btn primary" type="submit" id="btnFind">Show my admit card</button>
+    </form>
+    <p class="msg" id="lookupMsg" role="status"></p>
+  </section>
+
+  <section class="result" id="result" hidden>
+    <div class="result-bar">
+      <span id="resultLabel"></span>
+      <div class="actions">
+        <button class="btn primary" id="btnDownload" type="button" hidden>Download card to print</button>
+        <button class="btn" id="btnClear" type="button">Look up another number</button>
+      </div>
+    </div>
+    <p class="hint" id="printHint" hidden>Open the downloaded file in your browser and press <b>Print admit card</b>.</p>
+    <div class="scroller" id="cardBox"></div>
+  </section>
+
+  <p class="p-foot" id="pFoot"></p>
+</div>`;
+
+// ---------- Shared with the Admit Card Builder ----------
+const DEFAULT_INSTRUCTIONS = [
+  "Arrive at the examination hall at least 15 minutes before the scheduled start time.",
+  "Valid Campus Card and Admit Card are mandatory for entry. No alteration will be accepted.",
+  "Sit strictly according to the seating plan in the examination hall.",
+  "Possession of a mobile phone or any electronic/digital device is strictly prohibited during the examination.",
+  "The security of personal belongings is the sole responsibility of the student. The administration will not be liable for any loss or damage.",
+  "Carefully verify your date sheet, date, time, and venue before each examination.",
+  "No claim will be entertained in the event of a missed examination.",
+  "Obey the invigilators and Course Instructor in the examination hall.",
+  "Any form of unfair means — including substitution, mutilation, or alteration of answer books, admit cards, or any examination record — will be dealt under the University's Examination Regulations.",
+  "For full Unfair Means Rules and Regulations, visit the University's official examination portal.",
+];
+const DEFAULT_SETTINGS = {
+  institution: "Your University Name",
+  campus: "Main Campus",
+  examTitle: "TERMINAL EXAMINATIONS SPRING-2026",
+  subtitle: "Card and Seating Information",
+  notice: "Important: Verify Name and Father Name with SSC record. The same particulars will be printed on the Degree and Transcript.",
+  seating: "SEATING: Column A starts from the left when facing the board.",
+  instructions: DEFAULT_INSTRUCTIONS.join("\n"),
+  signatory: "Controller of Examinations",
+  logo: "",
+};
+
+const ALIASES = {
+  reg: ["registrationno", "registrationnumber", "registration", "regno", "regnumber", "reg", "rollno", "rollnumber", "studentid", "id"],
+  name: ["name", "studentname", "fullname"],
+  father: ["fathername", "fathersname", "father", "guardianname"],
+  program: ["program", "programme", "degree", "degreeprogram", "class"],
+  code: ["coursecode", "code", "subjectcode", "papercode"],
+  title: ["coursetitle", "coursename", "course", "subject", "subjectname", "title"],
+  date: ["date", "examdate", "paperdate"],
+  time: ["time", "examtime", "starttime", "papertime"],
+  room: ["room", "roomno", "venue", "hall", "examhall"],
+  seat: ["seatno", "seat", "seatnumber"],
+};
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+
+const norm = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+
+
+// ---------- Date & time parsing ----------
+function ymd(y, m, d) {
+  if (y < 100) y += 2000;
+  const t = Date.UTC(y, m - 1, d);
+  const dt = new Date(t);
+  if (dt.getUTCMonth() !== m - 1) return null;
+  return { y, m, d, key: y * 10000 + m * 100 + d, dow: dt.getUTCDay() };
+}
+function monthIndex(s) { const i = MONTHS.findIndex((m) => s.toLowerCase().startsWith(m.toLowerCase())); return i < 0 ? null : i + 1; }
+function parseDate(v) {
+  if (v instanceof Date && !isNaN(v)) return ymd(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  if (typeof v === "number" && v > 20000) {
+    const dt = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);
+    return ymd(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+  }
+  const s = String(v ?? "").trim();
+  let m;
+  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return ymd(+m[1], +m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/))) return ymd(+m[3], +m[2], +m[1]); // day first
+  if ((m = s.match(/(\d{1,2})(?:st|nd|rd|th)?[\s-]+([A-Za-z]{3,})[\s,-]+(\d{2,4})/))) { const mo = monthIndex(m[2]); return mo ? ymd(+m[3], mo, +m[1]) : null; }
+  if ((m = s.match(/([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})/))) { const mo = monthIndex(m[1]); return mo ? ymd(+m[3], mo, +m[2]) : null; }
+  return null;
+}
+function parseTime(v) {
+  if (v instanceof Date && !isNaN(v)) return v.getHours() * 60 + v.getMinutes();
+  if (typeof v === "number") { const f = v % 1; return Math.round(f * 1440) % 1440; }
+  const s = String(v ?? "").trim();
+  let m = s.match(/(\d{1,2})(?:[:.](\d{2}))?\s*([AaPp])\.?[Mm]?/);
+  if (m && (m[2] || /[AaPp]\.?[Mm]/.test(s))) {
+    let h = +m[1] % 12; if (/p/i.test(m[3])) h += 12;
+    return h * 60 + (+m[2] || 0);
+  }
+  m = s.match(/^(\d{1,2})[:.](\d{2})/);
+  if (m && +m[1] < 24) return +m[1] * 60 + +m[2];
+  return null;
+}
+const fmtDate = (d) => `${pad(d.d)} ${MONTHS[d.m - 1]} ${d.y} (${DAYS[d.dow]})`;
+const fmtTime = (mins) => { const h = Math.floor(mins / 60), mm = mins % 60; return `${pad(h % 12 || 12)}:${pad(mm)} ${h < 12 ? "AM" : "PM"}`; };
+function fmtStamp(dt) {
+  let h = dt.getHours(); const ap = h < 12 ? "AM" : "PM"; h = h % 12 || 12;
+  return `${MONTHS[dt.getMonth()]} ${pad(dt.getDate())}, ${dt.getFullYear()}, ${pad(h)}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())} ${ap}`;
+}
+
+// ---------- Spreadsheet reading ----------
+function matchColumns(headerRow) {
+  const map = {};
+  headerRow.forEach((h, i) => {
+    const n = norm(h);
+    if (!n) return;
+    for (const [field, list] of Object.entries(ALIASES)) {
+      if (map[field] === undefined && list.includes(n)) { map[field] = i; return; }
+    }
+  });
+  return map;
+}
+// Excel often declares a sheet as A1:XFD1048576 when whole rows or columns are formatted.
+// Reading that range builds millions of empty cells and fails with "Invalid string length",
+// so shrink the range to the cells that actually hold values before reading.
+function sheetRows(ws) {
+  let maxR = -1, maxC = -1;
+  for (const addr in ws) {
+    if (addr[0] === "!") continue;
+    const cell = ws[addr];
+    if (!cell || cell.v === undefined || cell.v === null || cell.v === "") continue;
+    const { r, c } = XLSX.utils.decode_cell(addr);
+    if (r > maxR) maxR = r;
+    if (c > maxC) maxC = c;
+  }
+  if (maxR < 0) return [];
+  ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true, blankrows: false });
+}
+function readSettingsSheet(ws) {
+  const rows = sheetRows(ws);
+  const keys = { institution: "institution", university: "institution", campus: "campus", examtitle: "examTitle", exam: "examTitle", subtitle: "subtitle", notice: "notice", seatingnote: "seating", seating: "seating", signatory: "signatory", signature: "signatory" };
+  const instr = [];
+  for (const [k, v] of rows) {
+    const n = norm(k);
+    if (!n || v === "") continue;
+    if (n.startsWith("instruction")) instr.push(String(v));
+    else if (keys[n]) settings[keys[n]] = String(v);
+  }
+  if (instr.length) settings.instructions = instr.join("\n");
+}
+function buildStudents(rows) {
+  const issues = [];
+  const header = rows.findIndex((r) => Object.keys(matchColumns(r)).length >= 3);
+  if (header < 0) return { list: [], issues: ["No header row found. The first rows should contain column names such as Registration No, Name, Course Code, Date."] };
+  const col = matchColumns(rows[header]);
+  const missing = ["reg", "name", "code", "date", "time", "room", "seat"].filter((f) => col[f] === undefined);
+  if (missing.includes("reg")) return { list: [], issues: ["Missing a Registration No column, so rows cannot be grouped into students."] };
+  if (missing.length) issues.push("Columns not found: " + missing.map((f) => ALIASES[f][0]).join(", ") + ". Those cells will be blank.");
+
+  const byKey = new Map();
+  let skipped = 0, badDates = 0;
+  for (const r of rows.slice(header + 1)) {
+    const get = (f) => (col[f] === undefined ? "" : r[col[f]]);
+    const reg = String(get("reg")).trim();
+    if (!reg) { if (r.some((c) => String(c).trim())) skipped++; continue; }
+    const key = norm(reg);
+    let s = byKey.get(key);
+    if (!s) { s = { key, reg, name: "", father: "", program: "", courses: [] }; byKey.set(key, s); }
+    for (const f of ["name", "father", "program"]) if (!s[f] && String(get(f)).trim()) s[f] = String(get(f)).trim();
+    const code = String(get("code")).trim(), title = String(get("title")).trim();
+    if (!code && !title) continue;
+    const rawDate = get("date"), rawTime = get("time");
+    const d = parseDate(rawDate), t = parseTime(rawTime);
+    if (!d && String(rawDate).trim()) badDates++;
+    s.courses.push({
+      code, title,
+      dateKey: d ? d.key : 99999999, dateText: d ? fmtDate(d) : String(rawDate),
+      mins: t ?? 0, timeText: t === null ? String(rawTime) : fmtTime(t),
+      room: String(get("room")).trim(), seat: String(get("seat")).trim(),
+    });
+  }
+  const list = [...byKey.values()];
+  let clashCount = 0;
+  for (const s of list) {
+    s.courses.sort((a, b) => a.dateKey - b.dateKey || a.mins - b.mins);
+    const seen = new Map();
+    for (const c of s.courses) {
+      const k = c.dateText + "|" + c.timeText;
+      if (seen.has(k)) { c.clash = true; seen.get(k).clash = true; } else seen.set(k, c);
+    }
+    s.clash = s.courses.some((c) => c.clash);
+    if (s.clash) clashCount++;
+  }
+  list.sort((a, b) => a.reg.localeCompare(b.reg, undefined, { numeric: true }));
+  if (skipped) issues.push(`${skipped} row(s) skipped because Registration No was empty.`);
+  if (badDates) issues.push(`${badDates} date(s) could not be read and are printed as written. Use 04 Jun 2026, 2026-06-04 or 04/06/2026 (day first).`);
+  if (clashCount) issues.push(`${clashCount} student(s) have two papers at the same date and time (highlighted in the list).`);
+  return { list, issues };
+}
+// A CSV saved from a formatted Excel sheet can carry a million lines of empty commas after the
+// real rows, making it hundreds of MB. Stream it in pieces and keep only lines with values, so
+// the browser never has to hold the whole file as one string.
+async function readCsvCompact(file) {
+  const bom = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  const encoding = bom[0] === 0xff && bom[1] === 0xfe ? "utf-16le" : bom[0] === 0xfe && bom[1] === 0xff ? "utf-16be" : "utf-8";
+  const reader = file.stream().pipeThrough(new TextDecoderStream(encoding)).getReader();
+  const lines = [];
+  const keep = (line) => { const t = line.replace(/[,;\t\s]+$/, ""); if (t) lines.push(t); };
+  let tail = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const parts = (tail + value).split(/\r\n|\n|\r/);
+    tail = parts.pop();
+    parts.forEach(keep);
+  }
+  keep(tail);
+  return lines.join("\n");
+}
+
+const SAMPLE_CSV = `Registration No,Name,Father Name,Program,Course Code,Course Title,Date,Time,Room,Seat No
+FA23-BCS-014,Ayesha Rehman,Abdul Rehman,BS Computer Science,CSC461,Introduction to Data Science,04 Jun 2026,01:15 PM,F08,B-6
+FA23-BCS-014,Ayesha Rehman,Abdul Rehman,BS Computer Science,CSC312,Theory of Automata,08 Jun 2026,09:15 AM,G10,E-2
+FA23-BCS-014,Ayesha Rehman,Abdul Rehman,BS Computer Science,CSC323,Principles of Operating Systems,09 Jun 2026,09:15 AM,G10,D-6
+FA23-BCS-014,Ayesha Rehman,Abdul Rehman,BS Computer Science,CSC301,Design and Analysis of Algorithms,15 Jun 2026,09:15 AM,F17,A-5
+FA23-BCS-014,Ayesha Rehman,Abdul Rehman,BS Computer Science,CSC432,Information Security,15 Jun 2026,01:15 PM,F02,D-3
+FA23-BCS-027,Bilal Ahmed,Naveed Ahmed,BS Computer Science,CSC461,Introduction to Data Science,04 Jun 2026,01:15 PM,F08,C-2
+FA23-BCS-027,Bilal Ahmed,Naveed Ahmed,BS Computer Science,CSC312,Theory of Automata,08 Jun 2026,09:15 AM,G10,A-1
+FA23-BCS-027,Bilal Ahmed,Naveed Ahmed,BS Computer Science,CSC301,Design and Analysis of Algorithms,15 Jun 2026,09:15 AM,F17,B-4
+FA23-BCS-027,Bilal Ahmed,Naveed Ahmed,BS Computer Science,CSC432,Information Security,15 Jun 2026,01:15 PM,F02,E-5
+SP24-BSE-008,Hamza Iqbal,Muhammad Iqbal,BS Software Engineering,CSC323,Principles of Operating Systems,09 Jun 2026,09:15 AM,G12,C-3
+SP24-BSE-008,Hamza Iqbal,Muhammad Iqbal,BS Software Engineering,SEN310,Software Requirements Engineering,10 Jun 2026,01:15 PM,F05,A-2
+SP24-BSE-008,Hamza Iqbal,Muhammad Iqbal,BS Software Engineering,CSC301,Design and Analysis of Algorithms,15 Jun 2026,09:15 AM,F17,D-1
+`;
+
+function logoHTML() {
+  if (settings.logo) return `<img class="c-logo" src="${esc(imageUrl(settings.logo))}" alt="">`;
+  const initials = settings.institution.split(/\s+/).filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).join("").slice(0, 3) || "U";
+  return `<svg class="c-logo" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="28" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="30" cy="30" r="22" fill="none" stroke="#111" stroke-width="1"/><text x="30" y="35" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#111">${esc(initials)}</text></svg>`;
+}
+function cardHTML(s, stamp) {
+  const instr = settings.instructions.split("\n").map((l) => l.trim()).filter(Boolean);
+  const dated = s.courses.filter((c) => c.dateKey < 99999999);
+  const day = (c) => c.dateText.replace(/\s*\(\w+\)$/, "");
+  const first = dated[0], last = dated[dated.length - 1];
+  const span = !dated.length ? "" : day(first) === day(last) ? day(first) : `${day(first)} to ${day(last)}`;
+  const n = s.courses.length;
+  return `<article class="card">
+    <div class="c-head">${logoHTML()}
+      <div class="c-inst"><div class="n">${esc(settings.institution)}</div><div class="c">${esc(settings.campus)}</div></div>
+      <div class="c-exam"><div class="t">${esc(settings.examTitle)}</div><div class="s">${esc(settings.subtitle)}</div></div>
+    </div>
+    <div class="c-band"><span class="k">ADMIT CARD</span><span class="v">${n} paper${n === 1 ? "" : "s"}${span ? " · " + esc(span) : ""}</span></div>
+    <div class="c-who">
+      <div><span>Name</span><b>${esc(s.name)}</b></div>
+      <div class="reg"><span>Registration No</span><b>${esc(s.reg)}</b></div>
+      <div><span>Father Name</span><b>${esc(s.father)}</b></div>
+      <div><span>Program</span><b>${esc(s.program)}</b></div>
+    </div>
+    ${settings.notice ? `<div class="c-notice">${esc(settings.notice)}</div>` : ""}
+    <h3 class="c-h">Exam Schedule And Seating Plan</h3>
+    <table class="c-table">
+      <thead><tr><th>S.#</th><th>Course Code</th><th>Course Title</th><th>Date</th><th>Time</th><th>Room</th><th>Seat No</th><th>Invigilator's Sign</th></tr></thead>
+      <tbody>${s.courses.map((c, i) => `<tr${c.clash ? ' class="clash"' : ""}><td>${i + 1}</td><td>${esc(c.code)}</td><td class="l">${esc(c.title)}</td><td>${esc(c.dateText)}</td><td>${esc(c.timeText)}</td><td>${esc(c.room)}</td><td class="seat">${esc(c.seat)}</td><td class="sign"></td></tr>`).join("")}
+      ${settings.seating ? `<tr><td class="note" colspan="8">${esc(settings.seating)}</td></tr>` : ""}</tbody>
+    </table>
+    ${instr.length ? `<h3 class="c-h">Instructions For Students</h3>
+    <ol class="c-instr" style="grid-template-rows:repeat(${Math.ceil(instr.length / 2)},auto)">${instr.map((t, i) => `<li><b>${i + 1}.</b><span>${esc(t)}</span></li>`).join("")}</ol>` : ""}
+    <div class="c-foot"><span class="stamp">System Generated And Printed On: ${esc(stamp)}</span>${settings.signatory ? `<span class="ctrl">${esc(settings.signatory)}</span>` : ""}</div>
+  </article>`;
+}
+
+
+const imageUrl = (src) => src;
+const $ = (id) => document.getElementById(id);
+const use = (name) => (window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null));
+
+// ---------- Published state (embedded in the page) ----------
+let published = null;
+try { published = JSON.parse(document.getElementById("records").textContent); } catch (e) { published = null; }
+if (!published || typeof published !== "object") published = { settings: null, salt: "", records: null, count: 0, publishedAt: null };
+let settings = { ...DEFAULT_SETTINGS, ...(published.settings || {}) };
+let staged = null;      // students loaded by the exam office, not yet published
+let stagedName = "";
+let downloads = null;
+let isEditor = false;
+let shown = null;       // student whose card is on screen
+
+// ---------- Record locking ----------
+// Each card is encrypted with a key derived from its own registration number, and filed under a
+// hash of that number. The page holds no readable list: a card opens only for its number.
+const enc = new TextEncoder();
+const sha = async (s) => new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)));
+const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+const toB64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function recordId(salt, key) { return hex(await sha("id|" + salt + "|" + key)).slice(0, 32); }
+async function recordKey(salt, key) { return crypto.subtle.importKey("raw", await sha("key|" + salt + "|" + key), "AES-GCM", false, ["encrypt", "decrypt"]); }
+async function lockRecord(salt, s) {
+  const body = { reg: s.reg, name: s.name, father: s.father, program: s.program,
+    courses: s.courses.map((c) => ({ code: c.code, title: c.title, dateKey: c.dateKey, dateText: c.dateText, timeText: c.timeText, room: c.room, seat: c.seat, clash: !!c.clash })) };
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await recordKey(salt, s.key), enc.encode(JSON.stringify(body))));
+  return toB64(iv) + "." + toB64(ct);
+}
+async function unlockRecord(salt, key, blob) {
+  const [iv, ct] = blob.split(".");
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64(iv) }, await recordKey(salt, key), fromB64(ct));
+  return { key, ...JSON.parse(new TextDecoder().decode(pt)) };
+}
+
+// ---------- The page's own source, for republishing ----------
+function buildPage(data) {
+  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>' + RESET + "</style></head><body>"
+    + "<title>" + PAGE_TITLE + '</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n' + FONT_LINK + "\n"
+    + '<script id="records" type="application/json">' + json + "<\/script>\n"
+    + '<script src="' + XLSX_SRC + '"><\/script>\n'
+    + "<script>\n" + app.toString() + "\napp();\n<\/script>\n</body></html>";
+}
+
+// ---------- Header, footer, state line ----------
+function renderChrome() {
+  $("pInst").textContent = [settings.institution, settings.campus].filter(Boolean).join(" · ");
+  $("pExam").textContent = settings.examTitle || "Admit cards";
+  $("pLogo").innerHTML = logoHTML();
+  const n = published.count || 0;
+  const when = published.publishedAt ? new Date(published.publishedAt) : null;
+  const whenText = when ? `${pad(when.getDate())} ${MONTHS[when.getMonth()]} ${when.getFullYear()}` : "";
+  $("pFoot").textContent = published.records ? `Admit cards published ${whenText}. Contact the examination office if any detail on your card is wrong.` : "";
+  if (!published.records && !staged) {
+    $("lookupHint").textContent = "Admit cards for this exam have not been published yet. Check back later.";
+    $("lookupForm").hidden = true;
+  } else {
+    $("lookupHint").textContent = staged ? `Previewing ${staged.length} unpublished card${staged.length === 1 ? "" : "s"} from ${stagedName}. Students cannot see these until you publish.` : "Enter your registration number as it appears on your campus card.";
+    $("lookupForm").hidden = false;
+  }
+  if (isEditor) {
+    $("pubState").textContent = published.records ? `${n} admit card${n === 1 ? "" : "s"} published on ${whenText}.` : "No admit cards are published yet. Load the schedule, check a few cards below, then publish.";
+    $("btnPublish").textContent = staged ? `Publish ${staged.length} admit card${staged.length === 1 ? "" : "s"}` : "Save exam details";
+    $("btnUnpublish").hidden = !published.records;
+  }
+}
+
+// ---------- Student lookup ----------
+function setMsg(id, text, tone) { const el = $(id); el.textContent = text; el.className = "msg" + (tone ? " " + tone : ""); }
+function showCard(s, preview) {
+  shown = s;
+  $("cardBox").innerHTML = cardHTML(s, fmtStamp(new Date()));
+  $("resultLabel").textContent = preview ? `Preview of ${s.reg} (not published)` : `Admit card for ${s.reg}`;
+  $("btnDownload").hidden = !downloads;
+  $("printHint").hidden = !downloads;
+  $("result").hidden = false;
+  setMsg("lookupMsg", "");
+  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function lookup() {
+  const raw = $("reg").value.trim(), key = norm(raw);
+  $("result").hidden = true; shown = null;
+  if (!key) return setMsg("lookupMsg", "Enter your registration number first.", "warn");
+  if (staged) {
+    const s = staged.find((x) => x.key === key);
+    return s ? showCard(s, true) : setMsg("lookupMsg", `${raw} is not in ${stagedName}.`, "warn");
+  }
+  if (!published.records) return setMsg("lookupMsg", "Admit cards have not been published yet.", "warn");
+  if (!window.crypto || !crypto.subtle) return setMsg("lookupMsg", "This browser cannot open admit cards. Update it, or try another browser.", "warn");
+  $("btnFind").disabled = true;
+  try {
+    const blob = published.records[await recordId(published.salt, key)];
+    if (!blob) return setMsg("lookupMsg", `No admit card found for ${raw}. Check the number and try again, or contact the examination office.`, "warn");
+    showCard(await unlockRecord(published.salt, key, blob), false);
+  } catch (err) {
+    setMsg("lookupMsg", "This admit card could not be opened. Contact the examination office.", "warn");
+  } finally { $("btnFind").disabled = false; }
+}
+function cardFile(s) {
+  const css = ":root{--paper:#fff;--ink:#111;--ink-soft:#444;--rule:#222;--band:#ececec;--font-card:Arial,'Helvetica Neue',Helvetica,sans-serif}"
+    + "body{margin:0;background:#e9ecef;font-family:Arial,sans-serif}.bar{display:flex;justify-content:center;padding:16px}"
+    + ".bar button{font:600 15px Arial,sans-serif;padding:10px 22px;border-radius:6px;border:0;background:#1d5ba6;color:#fff;cursor:pointer}"
+    + ".wrap{overflow-x:auto;padding:0 16px 32px}" + CARD_CSS
+    + "@page{size:A4;margin:8mm}@media print{body{background:#fff}.bar{display:none}.wrap{padding:0;overflow:visible}"
+    + ".card{box-shadow:none;width:100%;min-height:0;height:279mm;padding:4mm 6mm}.c-table tr.clash td{background:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}";
+  return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    + "<title>Admit Card " + esc(s.reg) + "</title><style>" + css + "</style></head><body>"
+    + "<div class=\"bar\"><button type=\"button\" onclick=\"window.print()\">Print admit card</button></div>"
+    + "<div class=\"wrap\">" + cardHTML(s, fmtStamp(new Date())) + "</div></body></html>";
+}
+async function downloadCard() {
+  if (!shown || !downloads) return;
+  try {
+    await downloads.save({ filename: `Admit Card ${shown.reg.replace(/[^\w-]+/g, "-")}.html`, data: cardFile(shown) });
+  } catch (err) {
+    if (err && err.code === "declined") return;
+    if (err && ["unavailable", "not_granted", "capability_disabled", "capability_removed"].includes(err.code)) { downloads = null; $("btnDownload").hidden = true; $("printHint").hidden = true; return; }
+    setMsg("lookupMsg", "The card could not be downloaded. Try again in a moment.", "warn");
+  }
+}
+
+// ---------- Exam office ----------
+const FIELDS = { institution: "sInstitution", campus: "sCampus", examTitle: "sExamTitle", subtitle: "sSubtitle", notice: "sNotice", seating: "sSeating", instructions: "sInstructions", signatory: "sSignatory" };
+function fillForm() { for (const [k, id] of Object.entries(FIELDS)) $(id).value = settings[k] || ""; }
+function showStatus(text, issues, warn) {
+  const el = $("status");
+  el.hidden = false;
+  el.className = "status " + (warn ? "warn" : "ok");
+  el.innerHTML = esc(text) + (issues.length ? "<ul>" + issues.map((i) => `<li>${esc(i)}</li>`).join("") + "</ul>" : "");
+}
+function afterSettingsChange() { renderChrome(); if (shown) $("cardBox").innerHTML = cardHTML(shown, fmtStamp(new Date())); }
+function stage(list, name) {
+  staged = list; stagedName = name;
+  $("result").hidden = true; shown = null; $("confirm").hidden = true;
+  renderChrome();
+  if (list[0]) { $("reg").value = list[0].reg; lookup(); }
+}
+async function handleFile(file) {
+  let wb;
+  try {
+    wb = /\.(csv|txt)$/i.test(file.name)
+      ? XLSX.read(await readCsvCompact(file), { type: "string", raw: true })
+      : XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellStyles: false, cellHTML: false, cellText: false });
+  } catch (err) {
+    return showStatus(`Could not read ${file.name}.`, ["Save it as .xlsx or .csv and try again. Error: " + String(err.message || err)], true);
+  }
+  const settingsName = wb.SheetNames.find((n) => norm(n) === "settings");
+  if (settingsName) { readSettingsSheet(wb.Sheets[settingsName]); fillForm(); }
+  const dataName = wb.SheetNames.find((n) => n !== settingsName) || wb.SheetNames[0];
+  const { list, issues } = buildStudents(sheetRows(wb.Sheets[dataName]));
+  showStatus(list.length ? `Loaded ${list.length} student(s) from ${file.name}. Check a few cards below, then publish.` : `Nothing loaded from ${file.name}.`, issues, !list.length || issues.length > 0);
+  if (list.length) stage(list, file.name);
+}
+async function shrinkLogo(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const k = Math.min(1, 240 / Math.max(img.naturalWidth || 240, img.naturalHeight || 240));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round((img.naturalWidth || 240) * k)); c.height = Math.max(1, Math.round((img.naturalHeight || 240) * k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png");
+  } finally { URL.revokeObjectURL(url); }
+}
+let pendingAction = null;
+function askConfirm(text, label, action) {
+  pendingAction = action;
+  $("confirmText").textContent = text;
+  $("btnConfirm").textContent = label;
+  $("confirm").hidden = false;
+  setMsg("pubMsg", "");
+}
+async function publishData(data, doneText) {
+  const html = buildPage(data);
+  if (html.length > 15.5 * 1048576) return setMsg("pubMsg", `This is too much to publish in one page (${(html.length / 1048576).toFixed(1)} MB; the limit is 16 MB). Publish fewer students per page, for example one program at a time.`, "warn");
+  const artifact = await use("artifact");
+  if (!artifact) return setMsg("pubMsg", "Publishing is not available here. Open this page on claude.ai as its owner or an editor.", "warn");
+  try { sessionStorage.setItem("portalNotice", doneText); } catch (e) { /* the notice is optional */ }
+  try {
+    await artifact.publish(html);
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "conflict") return setMsg("pubMsg", "Someone published a newer version just now. The page is reloading to it; publish again once it loads.", "warn");
+    if (code === "not_writer" || code === "not_granted" || code === "consent_required" || code === "capability_disabled") { isEditor = false; $("admin").hidden = true; return; }
+    if (code === "too_large") return setMsg("pubMsg", "This is too much to publish in one page. Publish fewer students per page, for example one program at a time.", "warn");
+    if (code === "rate_limited") return setMsg("pubMsg", "Too many publishes in a short time. Wait a minute, then publish again.", "warn");
+    setMsg("pubMsg", "Publishing failed. Try again in a minute.", "warn");
+  }
+}
+async function publishStaged() {
+  $("btnConfirm").disabled = true; $("btnPublish").disabled = true;
+  try {
+    let salt = published.salt, records = published.records, count = published.count || 0, publishedAt = published.publishedAt;
+    if (staged) {
+      salt = toB64(crypto.getRandomValues(new Uint8Array(16)));
+      records = {};
+      for (let i = 0; i < staged.length; i++) {
+        records[await recordId(salt, staged[i].key)] = await lockRecord(salt, staged[i]);
+        if (i % 200 === 199) { setMsg("pubMsg", `Locking cards: ${i + 1} of ${staged.length}`); await new Promise((r) => setTimeout(r)); }
+      }
+      count = staged.length; publishedAt = new Date().toISOString();
+    }
+    setMsg("pubMsg", "Publishing...");
+    await publishData({ settings, salt, records, count, publishedAt }, staged ? `Published ${count} admit card${count === 1 ? "" : "s"}. Students can look up their cards now.` : "Exam details saved.");
+  } finally { $("btnConfirm").disabled = false; $("btnPublish").disabled = false; }
+}
+
+// ---------- Boot ----------
+const style = document.createElement("style");
+style.textContent = CSS + CARD_CSS;
+document.body.prepend(style);
+const root = document.createElement("div");
+root.innerHTML = MARKUP;
+document.body.appendChild(root);
+
+renderChrome();
+$("lookupForm").addEventListener("submit", (e) => { e.preventDefault(); lookup(); });
+$("btnClear").addEventListener("click", () => { $("result").hidden = true; shown = null; $("reg").value = ""; $("reg").focus(); });
+$("btnDownload").addEventListener("click", downloadCard);
+try {
+  const notice = sessionStorage.getItem("portalNotice");
+  if (notice) { sessionStorage.removeItem("portalNotice"); setMsg("pubMsg", notice, "ok"); }
+} catch (e) { /* storage unavailable */ }
+
+use("downloads").then((d) => { downloads = d; if (shown) { $("btnDownload").hidden = !d; $("printHint").hidden = !d; } });
+use("user").then(async (user) => {
+  isEditor = user ? await user.canEdit().catch(() => false) : false;
+  if (!isEditor) return;
+  $("admin").hidden = false;
+  fillForm();
+  renderChrome();
+  for (const [k, id] of Object.entries(FIELDS)) $(id).addEventListener("input", (e) => { settings[k] = e.target.value; afterSettingsChange(); });
+  $("logoInput").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { settings.logo = await shrinkLogo(f); afterSettingsChange(); } catch (err) { showStatus("That logo image could not be opened. Use a PNG, JPG or SVG file.", [], true); }
+  });
+  $("btnClearLogo").addEventListener("click", () => { settings.logo = ""; $("logoInput").value = ""; afterSettingsChange(); });
+  $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ""; });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+  $("btnSample").addEventListener("click", () => {
+    const wb = XLSX.read(SAMPLE_CSV, { type: "string", raw: true });
+    showStatus("Loaded 3 sample students. These are examples; load your own file before publishing.", [], true);
+    stage(buildStudents(sheetRows(wb.Sheets[wb.SheetNames[0]])).list, "the sample");
+  });
+  $("btnPublish").addEventListener("click", () => {
+    const now = published.count || 0;
+    askConfirm(staged
+      ? (now ? `Replace the ${now} published card${now === 1 ? "" : "s"} with ${staged.length} card${staged.length === 1 ? "" : "s"} from ${stagedName}? Students will see the new cards straight away.` : `Publish ${staged.length} admit card${staged.length === 1 ? "" : "s"} from ${stagedName}? Students can look up their cards straight away.`)
+      : "Save the exam details shown above to the published page?",
+      staged ? "Publish" : "Save", publishStaged);
+  });
+  $("btnUnpublish").addEventListener("click", () => askConfirm(`Remove all ${published.count || 0} published admit cards? Students will see that cards are not published yet.`, "Remove cards",
+    () => publishData({ settings, salt: "", records: null, count: 0, publishedAt: null }, "Published cards removed.")));
+  $("btnCancel").addEventListener("click", () => { $("confirm").hidden = true; pendingAction = null; });
+  $("btnConfirm").addEventListener("click", () => { $("confirm").hidden = true; const a = pendingAction; pendingAction = null; if (a) a(); });
+});
+}
+
+app();
+</script>

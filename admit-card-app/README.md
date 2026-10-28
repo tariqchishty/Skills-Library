@@ -43,3 +43,25 @@ papers at the same date and time are highlighted as a clash.
 An Excel workbook may include a sheet named **Settings** with `Key | Value` rows (`Institution`,
 `Campus`, `Exam Title`, `Subtitle`, `Notice`, `Seating Note`, `Signatory`, and one `Instruction`
 row per instruction) so the whole exam setup travels in one file.
+
+## Admit Card Portal (published page for students)
+
+`portal/` holds a second app: one page that carries every student's card. A student types their
+registration number and sees only their own card, which they can download and print. It runs as
+a claude.ai artifact, published from `portal/admit-card-portal.html`.
+
+- **Exam office:** owners and editors of the page see an *Exam office* panel. Load the schedule
+  (same CSV/Excel format as above), check a few cards, then **Publish**. The page republishes
+  itself with the records inside it. Publishing again replaces all cards.
+- **Students:** open the shared link, enter a registration number, then **Download card to print**.
+- **Privacy:** each card is encrypted with a key derived from its own registration number and
+  filed under a hash of it, so the page holds no readable list of students. It is not strong
+  protection: registration numbers follow a guessable pattern, so someone determined could try
+  numbers one by one. Don't include anything more sensitive than what is printed on the card.
+- **Size:** about 1.5 KB per student; 3,600 students is about 5.4 MB of the 16 MB page limit.
+
+Edit `portal/main.js`, then rebuild (it reuses the parsing and card code from `index.html`):
+
+```bash
+python3 portal/build.py index.html portal/main.js portal/admit-card-portal.html
+```
